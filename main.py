@@ -1,15 +1,19 @@
-from langchain.llms import OpenAI
-from langchain.chains import LLMChain
-from dotenv import load_dotenv
+import langchain_helper as lch
+import streamlit as st
 
-load_dotenv()
+st.title("Pets name generator")
 
-def generate_pet_name():
-    llm = OpenAI(temperature=0.7)
+user_animal_type = st.sidebar.selectbox("What is your pet?",("Cat", "Dog", "Cow", "Hamster"))
 
-    name = llm("I have a cat and I want a cool ame for it. Suggest me 5 cool names for my pet.")
+if user_animal_type == "Cat":
+    user_pet_color = st.sidebar.text_area(label="What is the color of your cat?", max_chars=15)
 
-    return name
+if user_animal_type == "Dog":
+    user_pet_color = st.sidebar.text_area(label="What is the color of your dog?", max_chars=15)
 
-if __name__ == "__main__":
-    print(generate_pet_name())
+if user_animal_type == "Hamster":
+    user_pet_color = st.sidebar.text_area(label="What is the color of your hamster?", max_chars=15)
+
+if user_pet_color:
+    response = lch.generate_pet_name(user_animal_type,user_pet_color)
+    st.text(response)
