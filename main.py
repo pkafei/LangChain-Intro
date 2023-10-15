@@ -1,19 +1,26 @@
-import langchain_helper as lch
 import streamlit as st
+import langchain_helper as lch
+import textwrap
 
-st.title("Pets name generator")
+st.title("YouTube Assistant")
 
-user_animal_type = st.sidebar.selectbox("What is your pet?",("Cat", "Dog", "Cow", "Hamster"))
+with st.sidebar:
+    with st.form(key="my_form"):
+        youtube_url = st.sidebar.text_area(
+            label="What is the YouTube video URL?",
+            max_chars=50
+        )
+        query = st.sidebar.text_area(
+            label="Ask me about the video?",
+            max_chars=50,
+            key="query"
+        )
 
-if user_animal_type == "Cat":
-    user_pet_color = st.sidebar.text_area(label="What is the color of your cat?", max_chars=15)
+        submit_button = st.form_submit_button(label="Submit")
+    
+    if query and youtube_url:
+        db = lch.create_vector_db_from_youtube_url(youtube_url)
+        response = lch.get_response_from_query(db, query) #previous version had response, docs
+        st.subheader("Answer:")
+        st.text(textwrap.fill(response, width=80))
 
-if user_animal_type == "Dog":
-    user_pet_color = st.sidebar.text_area(label="What is the color of your dog?", max_chars=15)
-
-if user_animal_type == "Hamster":
-    user_pet_color = st.sidebar.text_area(label="What is the color of your hamster?", max_chars=15)
-
-if user_pet_color:
-    response = lch.generate_pet_name(user_animal_type,user_pet_color)
-    st.text(response)

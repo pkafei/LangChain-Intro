@@ -1,34 +1,54 @@
+from langchain.document_loaders import YoutubeLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.llms import OpenAI
+from langchain.embeddings.openai import OpenAIEmbeddings 
+from langchain import PromptTemplate
 from langchain.chains import LLMChain
+from langchain.vectorstores import FAISS 
 from dotenv import load_dotenv
-from langchain.agents import load_tools
-from langchain.agents import initialize_agent
-from langchain.agents import AgentType 
 
 load_dotenv()
 
-def generate_pet_name(pet_name, color):
-    llm = OpenAI(temperature=0.7)
+embeddings = OpenAIEmbeddings()
 
-    name = llm("I have a cat and I want a cool ame for it. Suggest me 5 cool names for my pet.")
+def create_vector_db_from_youtube_url(video_url: str) -> FAISS:
+     loader = YoutubeLoader.from_youtube_url(video_url)
+     transcript = loader.load()
 
-    return name
+     textsplitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+     docs = textsplitter.split_documents(transcript)
 
-def langchain_agent():
+     db = FAISS.from_documents(docs, embeddings)
+     return db
 
-    llm = OpenAI(temperature=0.5)
+def get_response_from_query(db, query, k=4):
+     # text-davinic can handl 4097 tokens
 
-    tools = load_tools(["wikipedia", "llm-math"], llm = llm)
+     docs = db.similarity_search(query, k=k)
+     docs_page_content = " ".join([d.page_content for d in docs])
 
-    agent = initialize_agent(
-        tools, llm, agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION, verbose=True
-    )
+     llm = OpenAI(model="text-davinci-003")
 
-    result = agent.run(
-        "What is the average age of a dog? Multiple the age by 2",
-    )
+     prompt = PromptTemplate(
+          input_variables=["question", "docs"],
+          template = """
+          You are a helpful assistant that that can answer questions about youtube videos 
+            based on the video's transcript.
+            
+            Answer the following question: {question}
+            By searching the following video transcript: {docs}
+            
+            Only use the factual information from the transcript to answer the question.
+            
+            If you feel like you don't have enough information to answer the question, say "I don't know".
+            
+            Your answers should be verbose and detailed.
+        """,
+     )
 
+     chain = LLMChain(llm=llm, prompt=prompt)
 
-if __name__ == "__main__":
-    langchain_agent()
-    # print(generate_pet_name())
+     response = chain.run(question=query, docs=docs_page_content)
+     response = response.replace("\n", " ")
+     return response
+            
